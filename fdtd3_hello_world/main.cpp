@@ -4,76 +4,86 @@
 #include <vector>
 #include <cmath>
 
-const double c = 2.9979246e8; //! 光速
-const double eps0 = 8.8541878e-12; //! 真空の誘電率
-const double mu0 = 1.256637e-6; //! 真空の透磁率
-const double z0 = 376.73031; //! 真空のインピーダンス
+const double c = 2.9979246e8; //! speed of light
+const double eps0 = 8.8541878e-12; //! permittivity of vacuum
+const double mu0 = 1.256637e-6; //! magnetic permeability of vacuum
+const double z0 = 376.73031; //! characteristic impedance of vacuum
 
 const std::string filename = "../gnuplot_src/fdtd_data.dat";
 
-const int nx0 = 120; //! 解析領域x軸の分割数
-const int ny0 = 120; //! 解析領域y軸の分割数
-const double dx = 0.005; //! x軸セルサイズ
-const double dy = 0.005; //! y軸セルサイズ
-const int nstep = 100; //! 計算のステップ数
-const int lpml = 8; //! PMLの総数
-const int order = 4; //! PMLの次数
-const double rmax = -120; //! PMLの要求精度dB
+const int nx0 = 120; //! x axis division of calc scope
+const int ny0 = 120; //! y axis division of calc scope
+const int nz0 = 120; //! z axis division of calc scope
+const double dx = 0.005; //! x axis cell size 
+const double dy = 0.005; //! y axis cell size
+const double dz = 0.005; //! y axis cell size
+const int nstep = 700; //! the number of steps of the calculation
+const int pml_layer_length = 8;
+const int pml_order = 4;
+const double pml_accuracy = -120; //! dB
 const double copml = -1.5280063e-4; // ln(10)/(40Z0)
-const int nx = nx0 + 2 * lpml; //! x軸全分割数
-const int ny = ny0 + 2 * lpml; //! y軸全分割数
 
-std::vector<std::vector<double>> ex(nx + 1, std::vector<double>(ny + 1, 0.0)); //! x軸電界を記憶する配列
-std::vector<std::vector<double>> ey(nx + 1, std::vector<double>(ny + 1, 0.0)); //! y軸電界を記憶する配列
-std::vector<std::vector<double>> ez(nx + 1, std::vector<double>(ny + 1, 0.0)); //! z軸電界を記憶する配列
-std::vector<std::vector<double>> hx(nx + 1, std::vector<double>(ny + 1, 0.0)); //! x軸磁界を記憶する配列
-std::vector<std::vector<double>> hy(nx + 1, std::vector<double>(ny + 1, 0.0)); //! y軸磁界を記憶する配列
-std::vector<std::vector<double>> hz(nx + 1, std::vector<double>(ny + 1, 0.0)); //! z軸磁界を記憶する配列
+const int nx = nx0 + 2 * pml_layer_length; //! area size of x axis
+const int ny = ny0 + 2 * pml_layer_length; //! area size of y axis
+const int nz = nz0 + 2 * pml_layer_length; //! area size of z axis
 
-std::vector<std::vector<double>> aex(nx + 1, std::vector<double>(ny + 1, 0.0)); //! 係数配列
-std::vector<std::vector<double>> aey(nx + 1, std::vector<double>(ny + 1, 0.0)); //! 係数配列
-std::vector<std::vector<double>> aez(nx + 1, std::vector<double>(ny + 1, 0.0)); //! 係数配列
+double ex[nx + 1][ny + 1][nz + 1]; //! electric field of x axis
+double ey[nx + 1][ny + 1][nz + 1]; //! electric field of y axis
+double ez[nx + 1][ny + 1][nz + 1]; //! electric field of z axis
 
-std::vector<std::vector<double>> bexy(nx + 1, std::vector<double>(ny + 1, 0.0)); //! 係数配列
-std::vector<std::vector<double>> beyx(nx + 1, std::vector<double>(ny + 1, 0.0)); //! 係数配列
-std::vector<std::vector<double>> bezx(nx + 1, std::vector<double>(ny + 1, 0.0)); //! 係数配列
-std::vector<std::vector<double>> bezy(nx + 1, std::vector<double>(ny + 1, 0.0)); //! 係数配列
+double hx[nx + 1][ny + 1][nz + 1]; //! magnetic field of x axis
+double hy[nx + 1][ny + 1][nz + 1]; //! magnetic field of x axis
+double hz[nx + 1][ny + 1][nz + 1]; //! magnetic field of x axis
 
-std::vector<std::vector<double>> amx(nx + 1, std::vector<double>(ny + 1, 0.0)); //! 係数配列
-std::vector<std::vector<double>> amy(nx + 1, std::vector<double>(ny + 1, 0.0)); //! 係数配列
-std::vector<std::vector<double>> amz(nx + 1, std::vector<double>(ny + 1, 0.0)); //! 係数配列
+double aex[nx + 1][ny + 1][nz + 1];
+double aey[nx + 1][ny + 1][nz + 1];
+double aez[nx + 1][ny + 1][nz + 1];
 
-std::vector<std::vector<double>> bmxy(nx + 1, std::vector<double>(ny + 1, 0.0)); //! 係数配列
-std::vector<std::vector<double>> bmyx(nx + 1, std::vector<double>(ny + 1, 0.0)); //! 係数配列
-std::vector<std::vector<double>> bmzx(nx + 1, std::vector<double>(ny + 1, 0.0)); //! 係数配列
-std::vector<std::vector<double>> bmzy(nx + 1, std::vector<double>(ny + 1, 0.0)); //! 係数配列
+double bex[nx + 1][ny + 1][nz + 1];
+double bey[nx + 1][ny + 1][nz + 1];
+double bez[nx + 1][ny + 1][nz + 1];
 
-std::vector<std::vector<double>> epsd(nx + 2, std::vector<double>(ny + 2, 0.0)); //! 比誘電率
-std::vector<std::vector<double>> sgmed(nx + 2, std::vector<double>(ny + 2, 0.0)); //! 導電率
-std::vector<std::vector<double>> mud(nx + 2, std::vector<double>(ny + 2, 0.0)); //! 比誘電率
-std::vector<std::vector<double>> sgmmd(nx + 2, std::vector<double>(ny + 2, 0.0)); //! 導電率
+double amx[nx + 1][ny + 1][nz + 1];
+double amy[nx + 1][ny + 1][nz + 1];
+double amz[nx + 1][ny + 1][nz + 1];
 
-const double epsbk = 1.0; //!背景誘電率
-const double mubk = 1.0; //!背景透磁率
-const double sigebk = 0.0; //!背景伝導率
-const double sigmbk = 0.0; //!背景伝磁率
+double bmx[nx + 1][ny + 1][nz + 1];
+double bmy[nx + 1][ny + 1][nz + 1];
+double bmz[nx + 1][ny + 1][nz + 1];
 
-const int ic = nx / 2; //! 四角柱の中心x
-const int jc = ny / 2; //! 四角柱の中心y
-const int lx2 = 20; //! 四角柱1/2長さx
-const int ly2 = 20; //! 四角柱1/2長さx
-const double epsr = 3.0; //! 誘電体の比誘電率
+double eps_field[nx + 1][ny + 1][nz + 1];
+double sgm_e_field[nx + 1][ny + 1][nz + 1];
+double mu_field[nx + 1][ny + 1][nz + 1];
+double sgm_m_field[nx + 1][ny + 1][nz + 1];
 
-const double duration = 0.1e-9; //! 励起電流源 パルス幅
-const double t0 = 4.0*duration; //! 励起電流源 ピーク時刻
-const int ifed = ic - lx2 - 20; //! 給電位置x
-const int jfed = jc; //! 給電位置y
-double befed; //! 係数
+const double eps_background = 1.0; //! relative permittivity
+const double mu_background = 1.0; //! relative magnetic permeability 
+const double sig_e_background = 0.0; //! electric conductivety
+const double sig_m_background = 0.0; //! magnetic conductivety
 
-const double v = c / sqrt(epsbk*mubk);
-const double dt = 0.99999 / (v*sqrt(1.0 / (dx*dx) + 1.0 / (dy*dy))); //! 時間ステップ [s]
-double t; //! 時刻
+//! configration of scatterers
+const int ic = nx / 2; //! x position of center
+const int jc = ny / 2; //! y position of center 
+const int kc = nz / 2; //! z position of center
+const int lx2 = 20; //! (x length of one side) /2
+const int ly2 = 20; //! (y length of one side) /2
+const int lz2 = 20; //! (z length of one side) /2
+const double eps_scatterer = 3.0; //! relative permittivity of scatterers
 
+//! configration of excitation current source
+const double duration = 0.1e-9; //! pulse width
+const double t0 = 4.0 * duration; //! peak time
+const int ifed = ic - lx2 - 20; //! x feeding position
+const int jfed = jc; //! y feeding position
+const int kfed = kc; //! z feeding position
+double befed; //! coefficient of soft feeding
+double dl = 0.001; //! gap of hard feeding
+
+const double v = c / sqrt(eps_background * mu_background);
+const double dt = 0.99999 / (v*sqrt(1.0 / (dx*dx) + 1.0 / (dy*dy) + 1.0 / (dz*dz))); //! time step [sec]
+double t = 0.0; //! current time
+
+/*
 class pml {
 public:
 	int i0, i1, j0, j1;
@@ -86,49 +96,49 @@ public:
 };
 
 pml pml_l, pml_r, pml_d, pml_u;
+*/
 
 void setup(void);
-
-void e_cal(void);
-void h_cal(void);
-
+void electric_field_step(void);
+void magnetic_field_step(void);
 void feed(void);
 
+/*
 void initpml(void);
 void init_pml(pml p,int x0, int x1, int y0, int y1);
 void epml(void);
 void e_pml(pml p);
 void hpml(void);
 void h_pml(pml p);
+*/
 
 int main() {
 
 	std::ofstream outputfile(filename);
 
 	setup();
-	initpml();
+	//initpml();
 
 	t = dt;
 
 	for (int n = 1; n <= nstep; n++) {
-		e_cal();
+		electric_field_step();
+		//e_pml();
 		feed();
-		epml();
-		t += 0.5*dt;
-		h_cal();
-		hpml();
-		t += 0.5*dt;
+		t += 0.5 * dt;
+		magnetic_field_step();
+		//h_pml();
+		t += 0.5 * dt;
 
-		
 		if (n % 10 == 0) {
 			for (int j = 0; j <= ny; j++) {
 				for (int i = 0; i <= nx; i++) {
-					outputfile << i*dx << " " << j*dy << " " << ez[i][j] << std::endl;
+					outputfile << i*dx << " " << j*dy << " " << ez[i][j][nz/2] << std::endl;
 				}
 			}
 			outputfile << std::endl << std::endl;
-
 			std::cout << n << "/" << nstep << std::endl;
+			std::cout << t/t0 << "," << ez[ifed-10][jfed][kfed] << std::endl;
 		}
 		
 	}
@@ -141,121 +151,132 @@ int main() {
 void feed(void) {
 	double iz;
 
-	iz = exp(-1 * pow((t-0.5*dt-t0)/duration,2));
-	ez[ifed][jfed] = ez[ifed][jfed] - befed*iz / (dx*dy);
+	//! soft feeding
+	//iz = exp(-1 * pow((t-0.5*dt-t0)/duration,2));
+	//ez[ifed][jfed][kfed] = ez[ifed][jfed][kfed] - befed*iz / (dx*dy);
+
+	//! hard feeding
+	ez[ifed][jfed][kfed] = exp(-1 * pow((t - t0) / duration, 2)) / dl;
 }
 
 void setup(void) {
 
-	double epsx, epsy, epsz;
-	double sgex, sgey, sgez;
-	double mux, muy, muz;
-	double sgmx, sgmy, sgmz;
-	double a;
+	double eps, sgm, mu, sgmm, a;
 
-	//! 背景媒質設定
-	for (int j = 0; j <= ny; j++) {
-		for (int i = 0; i <= nx; i++) {
-			epsd[i][j] = epsbk;
-			mud[i][j] = mubk;
-			sgmed[i][j] = sigebk;
-			sgmmd[i][j] = sigmbk;
+	//! set the mudium of background
+	for (int k = 0; k <= nz; k++) {
+		for (int j = 0; j <= ny; j++) {
+			for (int i = 0; i <= nx; i++) {
+				eps_field[i][j][k] = eps_background;
+				mu_field[i][j][k] = mu_background;
+				sgm_e_field[i][j][k] = sig_e_background;
+				sgm_m_field[i][j][k] = sig_m_background;
+			}
 		}
 	}
 
-	//! 誘電体設定
-	for (int j = jc - ly2; j <= jc + ly2 - 1; j++) {
-		for (int i = ic - lx2; i <= ic + lx2 - 1; i++) {
-			epsd[i][j] = epsr;
-			mud[i][j] = 1.0;
-			sgmed[i][j] = 0.0;
-			sgmmd[i][j] = 0.0;
+	//! set scatterer
+	for (int k = kc - lz2; k <= kc + lz2 - 1; k++) {
+		for (int j = jc - ly2; j <= jc + ly2 - 1; j++) {
+			for (int i = ic - lx2; i <= ic + lx2 - 1; i++) {
+				eps_field[i][j][k] = eps_scatterer;
+				mu_field[i][j][k] = 1.0;
+				sgm_e_field[i][j][k] = 0.0;
+				sgm_m_field[i][j][k] = 0.0;
+			}
 		}
 	}
 
-	//! 電流源の係数決定
-	befed = dt / (eps0*0.25*(epsd[ifed][jfed]+ epsd[ifed-1][jfed]+ epsd[ifed][jfed-1]+ epsd[ifed-1][jfed-1]));
+	//! set coefficient of excitation current source
+	befed = dt / (eps0*0.25*(eps_field[ifed][jfed][kfed] + eps_field[ifed-1][jfed][kfed] + eps_field[ifed][jfed-1][kfed] + eps_field[ifed-1][jfed-1][kfed]));
 
 	//! 係数配列の決定
-	for (int j = 0; j <= ny; j++) {
-		for (int i = 0; i <= nx; i++) {
-			epsx = 0.5*(epsd[i+1][j+1] + epsd[i+1][j])*eps0;
-			sgex = 0.5*(sgmed[i+1][j+1] + sgmed[i+1][j]);
-			a = 0.5*sgex*dt / epsx;
-			aex[i][j] = (1.0-a) / (1.0+a);
-			bexy[i][j] = dt / epsx / (1.0 + a) / dy;
+	for (int k = 0; k <= nz; k++) {
+		for (int j = 0; j <= ny; j++) {
+			for (int i = 0; i <= nx; i++) {
+				eps = 0.25 * (eps_field[i + 1][j + 1][k + 1] + eps_field[i + 1][j][k + 1] + eps_field[i + 1][j + 1][k] + eps_field[i + 1][j][k])*eps0;
+				sgm = 0.25 * (sgm_e_field[i + 1][j + 1][k + 1] + sgm_e_field[i + 1][j][k + 1] + sgm_e_field[i + 1][j + 1][k] + sgm_e_field[i + 1][j][k]);
+				a = 0.5 * sgm * dt / eps;
+				aex[i][j][k] = (1.0 - a) / (1.0 + a);
+				bex[i][j][k] = dt / eps / (1.0 + a);
 
-			epsy = 0.5*(epsd[i + 1][j + 1] + epsd[i][j+1])*eps0;
-			sgey = 0.5*(sgmed[i + 1][j + 1] + sgmed[i][j+1]);
-			a = 0.5*sgey*dt / epsy;
-			aey[i][j] = (1.0 - a) / (1.0 + a);
-			beyx[i][j] = dt / epsy / (1.0 + a) / dx;
+				eps = 0.25 * (eps_field[i + 1][j + 1][k + 1] + eps_field[i][j + 1][k + 1] + eps_field[i + 1][j + 1][k] + eps_field[i][j + 1][k])*eps0;
+				sgm = 0.25 * (sgm_e_field[i + 1][j + 1][k + 1] + sgm_e_field[i][j + 1][k + 1] + sgm_e_field[i + 1][j + 1][k] + sgm_e_field[i][j + 1][k]);
+				a = 0.5 * sgm * dt / eps;
+				aey[i][j][k] = (1.0 - a) / (1.0 + a);
+				bey[i][j][k] = dt / eps / (1.0 + a);
 
-			epsz = 0.25*(epsd[i + 1][j + 1] + epsd[i][j+1] + epsd[i+1][j] + epsd[i][j])*eps0;
-			sgez = 0.25*(sgmed[i + 1][j + 1] + sgmed[i][j + 1] + sgmed[i+1][j] + sgmed[i][j]);
-			a = 0.5*sgez*dt / epsz;
-			aez[i][j] = (1.0 - a) / (1.0 + a);
-			bezy[i][j] = dt / epsz / (1.0 + a) / dy;
-			bezx[i][j] = dt / epsz / (1.0 + a) / dx;
+				eps = 0.25 * (eps_field[i + 1][j + 1][k + 1] + eps_field[i][j + 1][k + 1] + eps_field[i + 1][j][k + 1] + eps_field[i][j][k + 1])*eps0;
+				sgm = 0.25 * (sgm_e_field[i + 1][j + 1][k + 1] + sgm_e_field[i][j + 1][k + 1] + sgm_e_field[i + 1][j][k + 1] + sgm_e_field[i][j][k + 1]);
+				a = 0.5 * sgm * dt / eps;
+				aez[i][j][k] = (1.0 - a) / (1.0 + a);
+				bez[i][j][k] = dt / eps / (1.0 + a);
 
-			mux = 0.5*(mud[i + 1][j + 1] + mud[i + 1][j])*mu0;
-			sgmx = 0.5*(sgmmd[i + 1][j + 1] + sgmmd[i + 1][j]);
-			a = 0.5*sgmx*dt / mux;
-			amx[i][j] = (1.0 - a) / (1.0 + a);
-			bmxy[i][j] = dt / mux / (1.0 + a) / dy;
+				mu = 0.5 * (mu_field[i + 1][j + 1][k + 1] + mu_field[i][j + 1][k + 1])*mu0;
+				sgmm = 0.5 * (sgm_m_field[i + 1][j + 1][k + 1] + sgm_m_field[i][j + 1][k + 1]);
+				a = 0.5 * sgmm * dt / mu;
+				amx[i][j][k] = (1.0 - a) / (1.0 + a);
+				bmx[i][j][k] = dt / mu / (1.0 + a);
 
-			muy = 0.5*(mud[i + 1][j + 1] + mud[i][j + 1])*mu0;
-			sgmy = 0.5*(sgmmd[i + 1][j + 1] + sgmmd[i][j + 1]);
-			a = 0.5*sgmy*dt / muy;
-			amy[i][j] = (1.0 - a) / (1.0 + a);
-			bmyx[i][j] = dt / muy / (1.0 + a) / dx;
+				mu = 0.5 * (mu_field[i + 1][j + 1][k + 1] + mu_field[i + 1][j][k + 1])*mu0;
+				sgmm = 0.5 * (sgm_m_field[i + 1][j + 1][k + 1] + sgm_m_field[i + 1][j][k + 1]);
+				a = 0.5 * sgmm * dt / mu;
+				amy[i][j][k] = (1.0 - a) / (1.0 + a);
+				bmy[i][j][k] = dt / mu / (1.0 + a);
 
-			muz = 0.25*epsd[i + 1][j + 1]*mu0;
-			sgmz = 0.25*sgmmd[i + 1][j + 1];
-			a = 0.5*sgmz*dt / muz;
-			amz[i][j] = (1.0 - a) / (1.0 + a);
-			bmzx[i][j] = dt / muz / (1.0 + a) / dx;
-			bmzy[i][j] = dt / muz / (1.0 + a) / dy;
+				mu = 0.5 * (mu_field[i + 1][j + 1][k + 1] + mu_field[i + 1][j + 1][k])*mu0;
+				sgmm = 0.5 * (sgm_m_field[i + 1][j + 1][k + 1] + sgm_m_field[i + 1][j + 1][k]);
+				a = 0.5 * sgmm * dt / mu;
+				amz[i][j][k] = (1.0 - a) / (1.0 + a);
+				bmz[i][j][k] = dt / mu / (1.0 + a);
+			}
 		}
 	}
 }
 
-void e_cal(void) {
+void electric_field_step(void) {
 
 	//! Ex
-	for (int j = 1; j <= ny-1; j++)
-		for (int i = 0; i <= nx-1; i++)
-			ex[i][j] = aex[i][j] * ex[i][j] + bexy[i][j] * (hz[i][j] - hz[i][j-1]);
+	for (int k = 1; k <= nz - 1; k++)
+		for (int j = 1; j <= ny - 1; j++)
+			for (int i = 0; i <= nx - 1; i++)
+				ex[i][j][k] = aex[i][j][k] * ex[i][j][k] + bex[i][j][k] * ((hz[i][j][k] - hz[i][j - 1][k])/dy - (hy[i][j][k] - hy[i][j][k - 1])/dz);
 
 	//! Ey
-	for (int j = 0; j <= ny - 1; j++)
-		for (int i = 1; i <= nx - 1; i++)
-			ey[i][j] = aey[i][j] * ey[i][j] - beyx[i][j] * (hz[i][j] - hz[i-1][j]);
+	for (int k = 1; k <= nz - 1; k++)
+		for (int j = 0; j <= ny - 1; j++)
+			for (int i = 1; i <= nx - 1; i++)
+				ey[i][j][k] = aey[i][j][k] * ey[i][j][k] + bey[i][j][k] * ((hx[i][j][k] - hx[i][j][k - 1])/dz - (hz[i][j][k] - hz[i - 1][j][k])/dx);
 	
 	//! Ez
-	for (int j = 1; j <= ny - 1; j++)
-		for (int i = 1; i <= nx - 1; i++)
-			ez[i][j] = aez[i][j] * ez[i][j] + bezx[i][j] * (hy[i][j] - hy[i - 1][j]) - bezy[i][j] * (hx[i][j] - hx[i][j-1]);
+	for (int k = 0; k <= nz - 1; k++)
+		for (int j = 1; j <= ny - 1; j++)
+			for (int i = 1; i <= nx - 1; i++)
+				ez[i][j][k] = aez[i][j][k] * ez[i][j][k] + bez[i][j][k] * ((hy[i][j][k] - hy[i - 1][j][k])/dx - (hx[i][j][k] - hx[i][j - 1][k])/dy);
 }
 
-void h_cal(void) {
+void magnetic_field_step(void) {
 
 	//! Hx
-	for (int j = 0; j <= ny - 1; j++)
-		for (int i = 1; i <= nx - 1; i++)
-			hx[i][j] = amx[i][j] * hx[i][j] - bmxy[i][j] * (ez[i][j+1] - ez[i][j]);
+	for (int k = 0; k <= nz - 1; k++)
+		for (int j = 0; j <= ny - 1; j++)
+			for (int i = 1; i <= nx - 1; i++)
+				hx[i][j][k] = amx[i][j][k] * hx[i][j][k] - bmx[i][j][k] * ((ez[i][j + 1][k] - ez[i][j][k])/dy - (ey[i][j][k + 1] - ey[i][j][k])/dz);
 
 	//! Hy
-	for (int j = 1; j <= ny - 1; j++)
-		for (int i = 0; i <= nx - 1; i++)
-			hy[i][j] = amy[i][j] * hy[i][j] + bmyx[i][j] * (ez[i+1][j] - ez[i][j]);
+	for (int k = 0; k <= nz - 1; k++)
+		for (int j = 1; j <= ny - 1; j++)
+			for (int i = 0; i <= nx - 1; i++)
+				hy[i][j][k] = amy[i][j][k] * hy[i][j][k] - bmy[i][j][k] * ((ex[i][j][k + 1] - ex[i][j][k])/dz - (ez[i + 1][j][k] - ez[i][j][k])/dx);
 
 	//! Hz
-	for (int j = 0; j <= ny - 1; j++)
-		for (int i = 0; i <= nx - 1; i++)
-			hz[i][j] = amz[i][j] * hz[i][j] - bmzx[i][j] * (ey[i+1][j] - ey[i][j]) + bmzy[i][j] * (ex[i][j+1] - ex[i][j]);
+	for (int k = 1; k <= nz - 1; k++)
+		for (int j = 0; j <= ny - 1; j++)
+			for (int i = 0; i <= nx - 1; i++)
+				hz[i][j][k] = amz[i][j][k] * hz[i][j][k] - bmz[i][j][k] * ((ey[i + 1][j][k] - ey[i][j][k])/dx - (ex[i][j + 1][k] - ex[i][j][k])/dy);
 }
 
+/*
 void initpml(void) {
 	init_pml(pml_l, 0, lpml, 0, ny);
 	init_pml(pml_r, nx-lpml, nx, 0, ny);
@@ -423,3 +444,5 @@ void h_pml(pml p) {
 	}
 
 }
+
+*/

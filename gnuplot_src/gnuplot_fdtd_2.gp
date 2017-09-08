@@ -5,7 +5,7 @@ reset
 set nokey                 # 凡例の非表示
 set xrange [0:0.6]       # x軸方向の範囲の設定
 set yrange [0:0.6]         # y軸方向の範囲の設定
-set zrange [-1500:1500]         # z軸方向の範囲の設定
+set zrange [-1:1]         # z軸方向の範囲の設定
 
 set term gif animate delay 15      # 出力をgifアニメに設定
 set output "fdtd_2.gif"  # 出力ファイル名の設定
